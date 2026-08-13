@@ -1,0 +1,42 @@
+# Messages templates for GoldProxy - proxy side
+
+# Private messages
+pm:
+  outgoing: "&7[&bTo &f{to}&7] &r{message}"
+  incoming: "&7[&aFrom &f{from}&7] &r{message}"
+  reply-prefix: "&7[&eYou&r -> &f{to}&7] &r{message}"
+
+# Maintenance
+maintenance:
+  broadcast: "&cServer under maintenance: {message}"
+  deny-kick: "&cServer is under maintenance, only staff can join right now."
+
+# Auto-messages
+automessages:
+  default: "&6Join our Discord: {discord}"
+
+# Social commands
+social:
+  twitch: "&6Twitch: {twitch}"
+  discord: "&6Discord: {discord}"
+  website: "&6Website: {website}"
+  store: "&6Store: {store}"
+
+# Server info
+serverinfo:
+  header: "&eServer Info for {server}"
+  online: "&aPlayers: {online}/{max}"
+  tps: "&aTPS: {tps}"
+
+# Anti-hack
+hack:
+  detected: "&cSuspicious client detected for {player} (brand={brand}). Action: {action}"
+
+# Permissions
+permission:
+  no-permission: "&cYou don't have permission to use this command."
+  invalid-target: "&cPlayer {target} not found or offline."
+
+# Generic
+generic:
+  unknown-error: "&cAn unknown error occurred. Check server logs."
