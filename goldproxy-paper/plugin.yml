@@ -1,0 +1,5 @@
+name: GoldProxyPaper
+main: com.midas.goldproxy.paper.GoldProxyPaper
+version: 0.1.0
+api-version: 1.21
+depend: []

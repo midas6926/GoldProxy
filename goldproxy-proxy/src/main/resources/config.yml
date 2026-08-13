@@ -1,0 +1,15 @@
+# GoldProxy configuration
+
+maintenance:
+  enabled: false
+  message: "Server under maintenance"
+  allowed-groups: ["admin"]
+
+protocol:
+  allowed-versions: []
+
+automessages: []
+
+social:
+  twitch: "https://twitch.tv/yourchannel"
+  discord: "https://discord.gg/yourserver"

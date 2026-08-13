@@ -1,0 +1,26 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.midas</groupId>
+  <artifactId>goldproxy</artifactId>
+  <version>0.1.0</version>
+  <packaging>pom</packaging>
+  <name>GoldProxy</name>
+
+  <properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <velocity.api.version>3.1.2</velocity.api.version>
+    <paper.api.version>1.21.1-R0.1-SNAPSHOT</paper.api.version>
+    <kyori.adventure.version>4.14.0</kyori.adventure.version>
+    <jedis.version>4.3.1</jedis.version>
+  </properties>
+
+  <modules>
+    <module>goldproxy-common</module>
+    <module>goldproxy-proxy</module>
+    <module>goldproxy-paper</module>
+  </modules>
+</project>
