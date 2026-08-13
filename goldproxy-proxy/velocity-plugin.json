@@ -1,0 +1,10 @@
+{
+  "id": "goldproxy",
+  "name": "GoldProxy",
+  "version": "0.1.0",
+  "description": "GoldProxy - cross-server proxy features for Velocity",
+  "url": "https://github.com/midas6926/GoldProxy",
+  "author": [ "midas6926" ],
+  "dependencies": [ "velocity" ],
+  "main": "com.midas.goldproxy.proxy.GoldProxyVelocity"
+}

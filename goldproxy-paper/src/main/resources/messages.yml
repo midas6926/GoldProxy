@@ -1,0 +1,17 @@
+# Messages templates for GoldProxy - paper backend side
+
+pm:
+  incoming: "[From {from}] {message}"
+  outgoing: "[To {to}] {message}"
+
+maintenance:
+  local-announce: "Server is under maintenance: {message}"
+
+social:
+  discord: "Discord: {discord}"
+
+hack:
+  report: "Reported suspicious client for {player} (brand={brand})"
+
+permission:
+  no-permission: "You don't have permission to use this command."

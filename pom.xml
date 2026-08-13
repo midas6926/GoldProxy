@@ -1,0 +1,9 @@
+<properties>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <velocity.api.version>3.1.2</velocity.api.version>
+    <paper.api.version>1.21.1-R0.1-SNAPSHOT</paper.api.version>
+    <kyori.adventure.version>4.14.0</kyori.adventure.version>
+    <jedis.version>4.3.1</jedis.version>
+  </properties>

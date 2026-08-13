@@ -1,0 +1,14 @@
+transports:
+  redis:
+    enabled: false
+    host: localhost
+    port: 6379
+    password: ""
+  plugin-message:
+    enabled: true
+    channel: "goldproxy:main"
+    shared-secret: "replace-with-secret"
+
+# Paper backend specific config
+backend:
+  buffer-delay-seconds: 30
