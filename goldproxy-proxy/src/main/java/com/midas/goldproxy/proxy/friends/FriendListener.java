@@ -29,6 +29,10 @@ public class FriendListener {
         Player p = (Player) event.getPlayer();
         String name = p.getUsername();
         java.util.UUID myUuid = p.getUniqueId();
+
+        // update last-known name
+        manager.putNameForUuid(myUuid, name);
+
         // Notify this player's friends who are online that I joined
         Set<java.util.UUID> friends = manager.getFriends(myUuid);
         for (java.util.UUID f : friends) {
@@ -47,8 +51,9 @@ public class FriendListener {
                 manager.getLastSeen(f).ifPresent(ls -> {
                     long mins = Duration.between(Instant.ofEpochMilli(ls), Instant.now()).toMinutes();
                     if (mins <= 5) {
-                        // We don't have the recent username stored reliably, print UUID as fallback
-                        p.sendMessage(Component.text(messages.get("friends.notify_you_recently_left", "Your friend {name} left {mins} minutes ago").replace("{name}", f.toString()).replace("{mins}", String.valueOf(mins))));
+                        // show last-known name when possible
+                        String lastName = manager.getNameForUuid(f).orElse(f.toString());
+                        p.sendMessage(Component.text(messages.get("friends.notify_you_recently_left", "Your friend {name} left {mins} minutes ago").replace("{name}", lastName).replace("{mins}", String.valueOf(mins))));
                     }
                 });
             }
@@ -63,7 +68,7 @@ public class FriendListener {
         String name = p.getUsername();
         manager.setLastSeen(id, Instant.now().toEpochMilli());
         // cache name->uuid for future
-        manager.nameToUuidCache.put(name.toLowerCase(), id.toString());
+        manager.putNameForUuid(id, name);
         for (java.util.UUID f : manager.getFriends(id)) {
             plugin.getProxy().getPlayer(f).ifPresent(friendPlayer -> {
                 friendPlayer.sendMessage(Component.text(messages.get("friends.notify_left", "Your friend {name} has left the network.").replace("{name}", name)));
