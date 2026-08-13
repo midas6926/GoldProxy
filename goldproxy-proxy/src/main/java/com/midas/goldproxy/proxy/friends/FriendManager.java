@@ -28,6 +28,9 @@ public class FriendManager {
     // uuid string -> last seen epoch millis
     private final Map<String, Long> lastSeen = new ConcurrentHashMap<>();
 
+    // uuid string -> last known name
+    private final Map<String, String> uuidToName = new ConcurrentHashMap<>();
+
     // recent username -> uuid cache
     private final Map<String, String> nameToUuidCache = new ConcurrentHashMap<>();
 
@@ -77,6 +80,11 @@ public class FriendManager {
                 Map<String, String> cm = (Map<String, String>) cache;
                 nameToUuidCache.putAll(cm);
             }
+            Object names = root.get("uuidToName");
+            if (names instanceof Map) {
+                Map<String, String> nm = (Map<String, String>) names;
+                uuidToName.putAll(nm);
+            }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to load friends data", e);
         }
@@ -100,6 +108,7 @@ public class FriendManager {
             root.put("friends", fm);
             root.put("lastSeen", lm);
             root.put("nameToUuid", new HashMap<>(nameToUuidCache));
+            root.put("uuidToName", new HashMap<>(uuidToName));
             gson.toJson(root, w);
             dirty = false;
         } catch (Exception e) {
@@ -117,6 +126,8 @@ public class FriendManager {
             String target = targetUuid.toString();
             if (owner.equals(target)) return false;
             friends.computeIfAbsent(owner, k -> ConcurrentHashMap.newKeySet()).add(target);
+            // also store last-known name for target
+            uuidToName.put(target, targetName);
             scheduleSave();
             return true;
         });
@@ -173,6 +184,7 @@ public class FriendManager {
         if (online.isPresent()) {
             UUID id = online.get().getUniqueId();
             nameToUuidCache.put(lower, id.toString());
+            uuidToName.put(id.toString(), online.get().getUsername());
             scheduleSave();
             return CompletableFuture.completedFuture(Optional.of(id));
         }
@@ -188,10 +200,12 @@ public class FriendManager {
                     // response: { id: "<uuid-without-hyphens>", name: "..." }
                     Map<String, Object> map = gson.fromJson(resp.body(), Map.class);
                     Object idObj = map.get("id");
+                    Object nameObj = map.get("name");
                     if (idObj instanceof String) {
                         String raw = (String) idObj;
                         UUID uuid = uuidFromMojangRaw(raw);
                         nameToUuidCache.put(lower, uuid.toString());
+                        if (nameObj instanceof String) uuidToName.put(uuid.toString(), (String) nameObj);
                         scheduleSave();
                         return Optional.of(uuid);
                     }
@@ -212,6 +226,16 @@ public class FriendManager {
         sb.insert(18, '-');
         sb.insert(23, '-');
         return UUID.fromString(sb.toString());
+    }
+
+    public Optional<String> getNameForUuid(UUID uuid) {
+        return Optional.ofNullable(uuidToName.get(uuid.toString()));
+    }
+
+    public void putNameForUuid(UUID uuid, String name) {
+        if (uuid == null || name == null) return;
+        uuidToName.put(uuid.toString(), name);
+        scheduleSave();
     }
 
     public void shutdown() {

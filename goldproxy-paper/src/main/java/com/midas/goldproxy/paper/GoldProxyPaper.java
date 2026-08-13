@@ -1,24 +1,32 @@
 package com.midas.goldproxy.paper;
 
+import com.midas.goldproxy.paper.messages.MessagesConfig;
+import com.midas.goldproxy.paper.transport.PaperPluginMessageTransport;
+import com.midas.goldproxy.paper.config.PaperConfig;
+import com.midas.goldproxy.paper.commands.FriendsGuiCommand;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.slf4j.Logger;
 
 public class GoldProxyPaper extends JavaPlugin {
 
-    private Logger logger;
+    private PaperPluginMessageTransport transport;
+    private MessagesConfig messages;
+    private PaperConfig config;
 
     @Override
     public void onEnable() {
-        this.logger = getSLF4JLogger();
-        logger.info("GoldProxyPaper enabled");
-        // TODO: setup Redis client, register listeners
-        getServer().getPluginManager().registerEvents(new PlayerReportListener(this), this);
+        this.messages = MessagesConfig.loadDefault();
+        this.config = PaperConfig.loadDefault();
+        this.transport = new PaperPluginMessageTransport(this, config.getPluginMessageChannel(), config.getSharedSecret());
+        transport.start();
+        getCommand("friends").setExecutor(new FriendsGuiCommand(this, transport, messages));
+        getLogger().info("GoldProxyPaper enabled");
     }
 
     @Override
     public void onDisable() {
-        logger.info("GoldProxyPaper disabled");
+        if (transport != null) transport.stop();
+        getLogger().info("GoldProxyPaper disabled");
     }
 
-    public Logger getLoggerSLF4J() { return logger; }
+    public org.slf4j.Logger getLoggerSLF4J() { return org.slf4j.LoggerFactory.getLogger(getName()); }
 }
