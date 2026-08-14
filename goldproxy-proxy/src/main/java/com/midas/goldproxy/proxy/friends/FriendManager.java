@@ -1,7 +1,6 @@
 package com.midas.goldproxy.proxy.friends;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.midas.goldproxy.proxy.GoldProxyVelocity;
 
 import java.io.FileWriter;
@@ -15,7 +14,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.Consumer;
 
 public class FriendManager {
     private final GoldProxyVelocity plugin;
@@ -30,6 +28,11 @@ public class FriendManager {
 
     // uuid string -> last known name
     private final Map<String, String> uuidToName = new ConcurrentHashMap<>();
+
+    // per-owner muted friends: ownerUuid -> set of muted friend uuids
+    private final Map<String, Set<String>> muted = new ConcurrentHashMap<>();
+    // per-owner opt-out: ownerUuid -> boolean
+    private final Map<String, Boolean> optOut = new ConcurrentHashMap<>();
 
     // recent username -> uuid cache
     private final Map<String, String> nameToUuidCache = new ConcurrentHashMap<>();
@@ -55,7 +58,7 @@ public class FriendManager {
             if (!Files.exists(dataDir)) Files.createDirectories(dataDir);
             if (!Files.exists(file)) return;
             String json = Files.readString(file);
-            Type t = new TypeToken<Map<String, Object>>(){}.getType();
+            Type t = new com.google.gson.reflect.TypeToken<Map<String, Object>>(){}.getType();
             Map<String, Object> root = gson.fromJson(json, t);
             if (root == null) return;
             Object f = root.get("friends");
@@ -85,6 +88,20 @@ public class FriendManager {
                 Map<String, String> nm = (Map<String, String>) names;
                 uuidToName.putAll(nm);
             }
+            Object m = root.get("muted");
+            if (m instanceof Map) {
+                Map<String, List<String>> mm = (Map<String, List<String>>) m;
+                for (Map.Entry<String, List<String>> e : mm.entrySet()) {
+                    Set<String> set = ConcurrentHashMap.newKeySet();
+                    set.addAll(e.getValue());
+                    muted.put(e.getKey(), set);
+                }
+            }
+            Object oo = root.get("optOut");
+            if (oo instanceof Map) {
+                Map<String, Boolean> om = (Map<String, Boolean>) oo;
+                for (Map.Entry<String, Boolean> e : om.entrySet()) optOut.put(e.getKey(), e.getValue());
+            }
         } catch (Exception e) {
             plugin.getLogger().warn("Failed to load friends data", e);
         }
@@ -109,6 +126,10 @@ public class FriendManager {
             root.put("lastSeen", lm);
             root.put("nameToUuid", new HashMap<>(nameToUuidCache));
             root.put("uuidToName", new HashMap<>(uuidToName));
+            Map<String, List<String>> mm = new HashMap<>();
+            for (Map.Entry<String, Set<String>> e : muted.entrySet()) mm.put(e.getKey(), new ArrayList<>(e.getValue()));
+            root.put("muted", mm);
+            root.put("optOut", new HashMap<>(optOut));
             gson.toJson(root, w);
             dirty = false;
         } catch (Exception e) {
@@ -197,7 +218,6 @@ public class FriendManager {
                         .build();
                 HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
                 if (resp.statusCode() == 200) {
-                    // response: { id: "<uuid-without-hyphens>", name: "..." }
                     Map<String, Object> map = gson.fromJson(resp.body(), Map.class);
                     Object idObj = map.get("id");
                     Object nameObj = map.get("name");
@@ -218,7 +238,6 @@ public class FriendManager {
     }
 
     private static UUID uuidFromMojangRaw(String raw) {
-        // raw like "f84c6a790a7e4d9e8ee3b3d1f4a0c123"
         if (raw.length() != 32) throw new IllegalArgumentException("Invalid raw UUID");
         StringBuilder sb = new StringBuilder(raw);
         sb.insert(8, '-');
@@ -236,6 +255,77 @@ public class FriendManager {
         if (uuid == null || name == null) return;
         uuidToName.put(uuid.toString(), name);
         scheduleSave();
+    }
+
+    public void toggleOptOut(UUID owner) {
+        String key = owner.toString();
+        boolean current = optOut.getOrDefault(key, false);
+        optOut.put(key, !current);
+        scheduleSave();
+    }
+
+    public boolean isOptedOut(UUID owner) {
+        return optOut.getOrDefault(owner.toString(), false);
+    }
+
+    public void toggleMute(UUID owner, UUID friend) {
+        String key = owner.toString();
+        Set<String> set = muted.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet());
+        String f = friend.toString();
+        if (set.contains(f)) set.remove(f); else set.add(f);
+        scheduleSave();
+    }
+
+    public boolean isMuted(UUID owner, UUID friend) {
+        return muted.getOrDefault(owner.toString(), Collections.emptySet()).contains(friend.toString());
+    }
+
+    // Handle remote friend events from Redis: body contains type, uuid, name, server, timestamp
+    public void handleRemoteEvent(com.google.gson.JsonObject body) {
+        try {
+            String type = body.getAsJsonPrimitive("type").getAsString();
+            UUID uuid = UUID.fromString(body.getAsJsonPrimitive("uuid").getAsString());
+            String name = body.has("name") ? body.getAsJsonPrimitive("name").getAsString() : null;
+            String server = body.has("server") ? body.getAsJsonPrimitive("server").getAsString() : "";
+            long ts = body.has("timestamp") ? body.getAsJsonPrimitive("timestamp").getAsLong() : Instant.now().toEpochMilli();
+            if (name != null) putNameForUuid(uuid, name);
+            if ("friend_join".equals(type)) {
+                // notify local friends that this uuid joined
+                notifyFriendsOfJoin(uuid, name, server);
+            } else if ("friend_leave".equals(type)) {
+                setLastSeen(uuid, ts);
+                notifyFriendsOfLeave(uuid, name);
+            }
+        } catch (Exception e) {
+            plugin.getLogger().debug("Failed to handle remote friend event", e);
+        }
+    }
+
+    private void notifyFriendsOfJoin(UUID who, String name, String server) {
+        // iterate all owners who have 'who' as a friend and notify if they are online and not opted-out/muted
+        for (Map.Entry<String, Set<String>> e : friends.entrySet()) {
+            String owner = e.getKey();
+            if (e.getValue().contains(who.toString())) {
+                UUID ownerUuid = UUID.fromString(owner);
+                if (isOptedOut(ownerUuid)) continue;
+                if (isMuted(ownerUuid, who)) continue;
+                plugin.getProxy().getPlayer(ownerUuid).ifPresent(p -> p.sendMessage(
+                        Component.text(plugin.getMessages().get("friends.notify_online", "Your friend {name} has joined on {server}").replace("{name}", name == null ? who.toString() : name).replace("{server}", server == null ? "" : server))));
+            }
+        }
+    }
+
+    private void notifyFriendsOfLeave(UUID who, String name) {
+        for (Map.Entry<String, Set<String>> e : friends.entrySet()) {
+            String owner = e.getKey();
+            if (e.getValue().contains(who.toString())) {
+                UUID ownerUuid = UUID.fromString(owner);
+                if (isOptedOut(ownerUuid)) continue;
+                if (isMuted(ownerUuid, who)) continue;
+                plugin.getProxy().getPlayer(ownerUuid).ifPresent(p -> p.sendMessage(
+                        Component.text(plugin.getMessages().get("friends.notify_left", "Your friend {name} has left the network.").replace("{name}", name == null ? who.toString() : name))));
+            }
+        }
     }
 
     public void shutdown() {

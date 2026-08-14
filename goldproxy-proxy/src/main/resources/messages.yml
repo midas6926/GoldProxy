@@ -37,6 +37,29 @@ permission:
   no-permission: "&cYou don't have permission to use this command."
   invalid-target: "&cPlayer {target} not found or offline."
 
+# Friends
+friends:
+  added: "&aAdded {target} to your friends."
+  already: "&e{target} is already your friend."
+  removed: "&cRemoved {target} from your friends."
+  notfound: "&c{target} is not in your friends list."
+  list.header: "&6Your friends:"
+  list.empty: "&eYou have no friends."
+  list.entry_online: "&a{0} - online on {server}"
+  list.entry_offline: "&7{0} - offline"
+  list.entry_recent: "&7{0} - left {mins} minutes ago"
+  notify_online: "&aYour friend {name} has joined on {server}"
+  notify_left: "&eYour friend {name} has left the network."
+  notify_you_friend_online: "&aYour friend {name} is online on {server}"
+  notify_you_recently_left: "&7Your friend {name} left {mins} minutes ago"
+  gui:
+    title: "Friends"
+    connect_success: "Connecting to {server}..."
+    connect_fail: "Failed to connect to {server}."
+    item_name: "{name}"
+    item_lore_online: "Online on: {server}"
+    item_lore_offline: "Last seen: {lastSeen} minutes ago"
+
 # Generic
 generic:
   unknown-error: "&cAn unknown error occurred. Check server logs."

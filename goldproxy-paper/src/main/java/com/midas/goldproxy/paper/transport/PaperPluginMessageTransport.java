@@ -97,6 +97,35 @@ public class PaperPluginMessageTransport {
         return fut;
     }
 
+    public CompletableFuture<JsonObject> requestConnect(Player carrier, UUID playerUuid, String targetServer) {
+        JsonObject body = new JsonObject();
+        String requestId = UUID.randomUUID().toString();
+        body.addProperty("type", "request_connect");
+        body.addProperty("playerUuid", playerUuid.toString());
+        body.addProperty("target", targetServer);
+        body.addProperty("requestId", requestId);
+        body.addProperty("timestamp", Instant.now().toEpochMilli());
+        byte[] bodyBytes = gson.toJson(body).getBytes(StandardCharsets.UTF_8);
+        String sig = HmacUtil.computeHmacBase64(sharedSecret, bodyBytes);
+        JsonObject envelope = new JsonObject();
+        envelope.add("body", body);
+        envelope.addProperty("signature", sig);
+        String txt = gson.toJson(envelope);
+        CompletableFuture<JsonObject> fut = new CompletableFuture<>();
+        pending.put(requestId, fut);
+        timeoutExec.schedule(() -> {
+            CompletableFuture<JsonObject> f = pending.remove(requestId);
+            if (f != null && !f.isDone()) f.completeExceptionally(new TimeoutException("Request timed out"));
+        }, 5, TimeUnit.SECONDS);
+        try {
+            carrier.sendPluginMessage(plugin, channel, txt.getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            pending.remove(requestId);
+            fut.completeExceptionally(e);
+        }
+        return fut;
+    }
+
     public void stop() {
         try { timeoutExec.shutdownNow(); } catch (Exception ignored) {}
     }

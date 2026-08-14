@@ -15,3 +15,8 @@ hack:
 
 permission:
   no-permission: "You don't have permission to use this command."
+
+friends:
+  gui:
+    connect_success: "Connecting to {server}..."
+    connect_fail: "Failed to connect to {server}."

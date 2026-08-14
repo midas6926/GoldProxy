@@ -21,7 +21,7 @@ public class TransportManager {
     public void start() {
         logger.info("TransportManager starting - Redis enabled={}, PluginMessage enabled={}", config.isRedisEnabled(), config.isPluginMessageEnabled());
         if (config.isRedisEnabled()) {
-            redisTransport = new RedisTransport(config);
+            redisTransport = new RedisTransport(plugin, config);
             try { redisTransport.start(); logger.info("RedisTransport started"); }
             catch (Exception e) { logger.error("Failed to start RedisTransport", e); }
         }
@@ -35,5 +35,9 @@ public class TransportManager {
     public void stop() {
         if (redisTransport != null) redisTransport.stop();
         if (pluginMessageTransport != null) pluginMessageTransport.stop();
+    }
+
+    public void publishFriendEvent(com.google.gson.JsonObject body) {
+        if (redisTransport != null) redisTransport.publishFriendEvent(body);
     }
 }

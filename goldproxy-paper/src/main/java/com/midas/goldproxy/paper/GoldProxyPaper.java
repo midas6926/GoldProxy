@@ -4,6 +4,7 @@ import com.midas.goldproxy.paper.messages.MessagesConfig;
 import com.midas.goldproxy.paper.transport.PaperPluginMessageTransport;
 import com.midas.goldproxy.paper.config.PaperConfig;
 import com.midas.goldproxy.paper.commands.FriendsGuiCommand;
+import com.midas.goldproxy.paper.listeners.FriendsInventoryListener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class GoldProxyPaper extends JavaPlugin {
@@ -19,6 +20,7 @@ public class GoldProxyPaper extends JavaPlugin {
         this.transport = new PaperPluginMessageTransport(this, config.getPluginMessageChannel(), config.getSharedSecret());
         transport.start();
         getCommand("friends").setExecutor(new FriendsGuiCommand(this, transport, messages));
+        getServer().getPluginManager().registerEvents(new FriendsInventoryListener(this, transport, messages), this);
         getLogger().info("GoldProxyPaper enabled");
     }
 
